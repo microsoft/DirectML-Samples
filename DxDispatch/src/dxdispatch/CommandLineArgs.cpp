@@ -119,6 +119,12 @@ CommandLineArgs::CommandLineArgs(int argc, char** argv)
             "Sets barrier types issued after every dispatch is recorded into a command list: none, uav, or uav+aliasing",
             cxxopts::value<std::string>()->default_value("uav")
         )
+        (
+            "u, custom_heaps",
+            "Binds input and output resources are allocated from custom heaps. Write-combined caching and system memory (L0) are used when this is specified.",
+            cxxopts::value<bool>()
+        )
+
         // DxDispatch generates root signatures that are guaranteed to match HLSL source, which eliminates
         // having to write it inline in the HLSL file. DXC for Xbox precompiles shaders for Xbox (by default), 
         // but precompilation requires the root signature to be in the HLSL source itself; to allow use of the
@@ -279,6 +285,11 @@ CommandLineArgs::CommandLineArgs(int argc, char** argv)
             m_uavBarrierAfterDispatch = true;
             m_aliasingBarrierAfterDispatch = true;
         }
+    }
+
+    if (result.count("custom_heaps"))
+    {
+        m_customHeaps = result["custom_heaps"].as<bool>();
     }
 
     auto queueTypeStr = result["queue_type"].as<std::string>();

@@ -401,12 +401,16 @@ void OnnxDispatchable::Bind(const Bindings& jsonBindings, uint32_t iteration)
                                 tensorShapeUint32.push_back(1);
                             }
 
-                            binding.resource = m_device->CreateDefaultBuffer(DMLCalcBufferTensorSize(
+                            UINT64 resourceSize = DMLCalcBufferTensorSize(
                                 dataTypeInfo.dmlDataType,
                                 tensorShapeUint32.size(),
                                 tensorShapeUint32.data(),
-                                nullptr
-                            ));
+                                nullptr);
+
+                            binding.resource = m_device->CreateBuffer(
+                                resourceSize,
+                                m_args.GetCustomHeaps() ? D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE : D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+                                m_args.GetCustomHeaps() ? D3D12_MEMORY_POOL_L0 : D3D12_MEMORY_POOL_UNKNOWN);
 
                             binding.ortValue = CreateTensorFromResource(
                                 m_ortDmlApi,

@@ -113,7 +113,14 @@ Executor::Executor(Model& model, std::shared_ptr<Device> device, const CommandLi
             assert(std::holds_alternative<Model::BufferDesc>(desc.value));
             auto& bufferDesc = std::get<Model::BufferDesc>(desc.value);
             auto wName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(desc.name);
-            m_resources[desc.name] = std::move(device->Upload(bufferDesc.sizeInBytes, bufferDesc.initialValues, wName));
+
+            m_resources[desc.name] = std::move(device->CreateBuffer(
+                bufferDesc.sizeInBytes, 
+                bufferDesc.initialValues, 
+                wName,
+                m_commandLineArgs.GetCustomHeaps() ? D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE : D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+                m_commandLineArgs.GetCustomHeaps() ? D3D12_MEMORY_POOL_L0 : D3D12_MEMORY_POOL_UNKNOWN
+            ));
         }
     }
     device->ExecuteCommandListAndWait();

@@ -39,6 +39,8 @@ public:
     bool GetUavBarrierAfterDispatch() const { return m_uavBarrierAfterDispatch; }
     bool GetAliasingBarrierAfterDispatch() const { return m_aliasingBarrierAfterDispatch; }
 
+    bool GetCustomHeaps() const { return m_customHeaps; }
+
     // ONNX
     gsl::span<const std::pair<std::string, uint32_t>> GetOnnxFreeDimensionNameOverrides() const { return m_onnxFreeDimensionNameOverrides; }
     gsl::span<const std::pair<std::string, uint32_t>> GetOnnxFreeDimensionDenotationOverrides() const { return m_onnxFreeDimensionDenotationOverrides; }
@@ -46,7 +48,7 @@ public:
     const std::unordered_map<std::string, std::vector<int64_t>>& GetOnnxBindingShapes() const { return m_onnxBindShapes; }
     std::optional<uint32_t> GetOnnxGraphOptimizationLevel() const { return m_onnxGraphOptimizationLevel; }
     std::optional<uint32_t> GetOnnxLoggingLevel() const { return m_onnxLoggingLevel; }
-    bool PrintVerboseOnnxBindingInfo() const { return m_onnxPrintVerboseBindingInfo; } 
+    bool PrintVerboseOnnxBindingInfo() const { return m_onnxPrintVerboseBindingInfo; }
 
 private:
     bool m_showAdapters = false;
@@ -60,6 +62,7 @@ private:
     bool m_disableAgilitySDK = false;
     bool m_uavBarrierAfterDispatch = true;
     bool m_aliasingBarrierAfterDispatch = false;
+    bool m_customHeaps = false;
     std::string m_adapterSubstring = "";
     std::filesystem::path m_modelPath;
     std::string m_pixCaptureName = "dxdispatch";

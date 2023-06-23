@@ -44,6 +44,14 @@ public:
         uint64_t alignment = 0,
         D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
 
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateBuffer(
+        uint64_t sizeInBytes,
+        D3D12_CPU_PAGE_PROPERTY cpuPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE,
+        D3D12_MEMORY_POOL memoryPoolPreference = D3D12_MEMORY_POOL_L0,
+        D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+        uint64_t alignment = 0,
+        D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE);
+
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateUploadBuffer(
         uint64_t sizeInBytes,
         D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE,
@@ -88,7 +96,12 @@ public:
         m_temporaryResources.emplace_back(std::move(object));
     }
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> Upload(uint64_t totalSize, gsl::span<const std::byte> data, std::wstring_view name = {});
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateBuffer(
+        uint64_t totalSize,
+        gsl::span<const std::byte> data,
+        std::wstring_view name,
+        D3D12_CPU_PAGE_PROPERTY cpuPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE,
+        D3D12_MEMORY_POOL memoryPoolPreference = D3D12_MEMORY_POOL_L0);
 
     std::vector<std::byte> Download(Microsoft::WRL::ComPtr<ID3D12Resource>);
 

@@ -73,7 +73,7 @@ Device::Device(
 
     THROW_IF_FAILED(m_d3dModule->CreateDevice(
         adapter, 
-        D3D_FEATURE_LEVEL_11_0, 
+        D3D_FEATURE_LEVEL_1_0_CORE,
         IID_PPV_ARGS(&m_d3d)));
 
     if (debugLayersEnabled)
@@ -163,6 +163,34 @@ ComPtr<ID3D12Resource> Device::CreateDefaultBuffer(
     return resource;
 }
 
+ComPtr<ID3D12Resource> Device::CreateBuffer(
+    uint64_t sizeInBytes,
+    D3D12_CPU_PAGE_PROPERTY cpuPageProperty,
+    D3D12_MEMORY_POOL memoryPoolPreference,
+    D3D12_RESOURCE_FLAGS resourceFlags,
+    uint64_t alignment,
+    D3D12_HEAP_FLAGS heapFlags)
+{
+    if (cpuPageProperty == D3D12_CPU_PAGE_PROPERTY_UNKNOWN && memoryPoolPreference == D3D12_MEMORY_POOL_UNKNOWN)
+    {
+        return CreateDefaultBuffer(sizeInBytes, resourceFlags, alignment, heapFlags);
+    }
+
+    auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeInBytes, resourceFlags, alignment);
+    auto heapProps = CD3DX12_HEAP_PROPERTIES(cpuPageProperty, memoryPoolPreference);
+
+    ComPtr<ID3D12Resource> resource;
+    THROW_IF_FAILED(m_d3d->CreateCommittedResource(
+        &heapProps,
+        heapFlags,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        nullptr,
+        IID_GRAPHICS_PPV_ARGS(resource.ReleaseAndGetAddressOf())));
+
+    return resource;
+}
+
 ComPtr<ID3D12Resource> Device::CreateUploadBuffer(
     uint64_t sizeInBytes,
     D3D12_RESOURCE_FLAGS resourceFlags,
@@ -247,23 +275,30 @@ void Device::RecordDispatch(const char* name, uint32_t threadGroupX, uint32_t th
     PIXEndEvent(m_commandList.Get());
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> Device::Upload(uint64_t totalSize, gsl::span<const std::byte> data, std::wstring_view name)
+Microsoft::WRL::ComPtr<ID3D12Resource> Device::CreateBuffer(
+    uint64_t totalSize, 
+    gsl::span<const std::byte> data, 
+    std::wstring_view name,
+    D3D12_CPU_PAGE_PROPERTY cpuPageProperty,
+    D3D12_MEMORY_POOL memoryPoolPreference
+)
 {
     if (data.size() > totalSize)
     {
         throw std::invalid_argument("Attempting to upload more data than the size of the buffer");
     }
 
-    auto defaultBuffer = CreateDefaultBuffer(totalSize);
+    auto buffer = CreateBuffer(totalSize, cpuPageProperty, memoryPoolPreference);
+
     if (!name.empty())
     {
-        defaultBuffer->SetName(name.data());
+        buffer->SetName(name.data());
     }
 
     if (data.empty())
     {
         // No need to create an upload resource if the source data is empty.
-        return defaultBuffer;
+        return buffer;
     }
 
     auto uploadBuffer = CreateUploadBuffer(totalSize);
@@ -279,20 +314,20 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Device::Upload(uint64_t totalSize, gsl::s
         D3D12_RESOURCE_BARRIER barriers[] =
         {
             CD3DX12_RESOURCE_BARRIER::Transition(
-                defaultBuffer.Get(),
+                buffer.Get(),
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COPY_DEST)
         };
         m_commandList->ResourceBarrier(_countof(barriers), barriers);
     }
 
-    m_commandList->CopyResource(defaultBuffer.Get(), uploadBuffer.Get());
+    m_commandList->CopyResource(buffer.Get(), uploadBuffer.Get());
 
     {
         D3D12_RESOURCE_BARRIER barriers[] =
         {
             CD3DX12_RESOURCE_BARRIER::Transition(
-                defaultBuffer.Get(),
+                buffer.Get(),
                 D3D12_RESOURCE_STATE_COPY_DEST,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
         };
@@ -301,32 +336,32 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Device::Upload(uint64_t totalSize, gsl::s
 
     m_temporaryResources.push_back(std::move(uploadBuffer));
 
-    return defaultBuffer;
+    return buffer;
 }
 
-std::vector<std::byte> Device::Download(Microsoft::WRL::ComPtr<ID3D12Resource> defaultBuffer)
+std::vector<std::byte> Device::Download(Microsoft::WRL::ComPtr<ID3D12Resource> buffer)
 {
-    auto readbackBuffer = CreateReadbackBuffer(defaultBuffer->GetDesc().Width);
+    auto readbackBuffer = CreateReadbackBuffer(buffer->GetDesc().Width);
     readbackBuffer->SetName(L"Device::Download");
 
     {
         D3D12_RESOURCE_BARRIER barriers[] =
         {
             CD3DX12_RESOURCE_BARRIER::Transition(
-                defaultBuffer.Get(),
+                buffer.Get(),
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                 D3D12_RESOURCE_STATE_COPY_SOURCE)
         };
         m_commandList->ResourceBarrier(_countof(barriers), barriers);
     }
 
-    m_commandList->CopyResource(readbackBuffer.Get(), defaultBuffer.Get());
+    m_commandList->CopyResource(readbackBuffer.Get(), buffer.Get());
 
     {
         D3D12_RESOURCE_BARRIER barriers[] =
         {
             CD3DX12_RESOURCE_BARRIER::Transition(
-                defaultBuffer.Get(),
+                buffer.Get(),
                 D3D12_RESOURCE_STATE_COPY_SOURCE,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
         };
@@ -335,9 +370,9 @@ std::vector<std::byte> Device::Download(Microsoft::WRL::ComPtr<ID3D12Resource> d
 
     ExecuteCommandListAndWait();
 
-    std::vector<std::byte> outputBuffer(defaultBuffer->GetDesc().Width);
+    std::vector<std::byte> outputBuffer(buffer->GetDesc().Width);
     {
-        size_t dataSize = defaultBuffer->GetDesc().Width;
+        size_t dataSize = buffer->GetDesc().Width;
         CD3DX12_RANGE readRange(0, gsl::narrow<size_t>(dataSize));
         void* readbackBufferData = nullptr;
         THROW_IF_FAILED(readbackBuffer->Map(0, &readRange, &readbackBufferData));
