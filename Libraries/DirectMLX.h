@@ -2148,8 +2148,6 @@ namespace dml
 
         TensorDesc inputTensor = input.Impl()->GetOutputDesc();
         const uint32_t defaultStridesAndDilations[3] = { 1, 1, 1 };
-        uint32_t dimensionCount = static_cast<uint32_t>(inputTensor.sizes.size());
-        uint32_t spatialDimensionCount = dimensionCount - 2;
 
 #if DML_TARGET_VERSION >= 0x6200
         DML_AVERAGE_POOLING1_OPERATOR_DESC averagePoolDesc = {};
