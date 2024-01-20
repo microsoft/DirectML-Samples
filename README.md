@@ -4,7 +4,9 @@ DirectML is a high-performance, hardware-accelerated DirectX 12 library for mach
 
 When used standalone, the DirectML API is a low-level DirectX 12 library and is suitable for high-performance, low-latency applications such as frameworks, games, and other real-time applications. The seamless interoperability of DirectML with Direct3D 12 as well as its low overhead and conformance across hardware makes DirectML ideal for accelerating machine learning when both high performance is desired, and the reliability and predictability of results across hardware is critical.
 
-More information about DirectML can be found in [Introduction to DirectML](https://docs.microsoft.com/windows/win32/direct3d12/dml-intro).
+More information about DirectML can be found in [Introduction to DirectML](https://docs.microsoft.com/windows/win32/direct3d12/dml-intro). 
+
+Be sure to also check out our [DirectML landing page](https://microsoft.github.io/DirectML/).
 
 - [Getting Started with DirectML](#getting-started-with-directml)
   - [Hardware requirements](#hardware-requirements)
@@ -12,8 +14,9 @@ More information about DirectML can be found in [Introduction to DirectML](https
   - [For users, data scientists, and researchers](#for-users-data-scientists-and-researchers)
 - [DirectML Samples](#directml-samples)
 - [DxDispatch Tool](#dxdispatch-tool)
-- [Windows ML on DirectML](#windows-ml-on-directml)
 - [ONNX Runtime on DirectML](#onnx-runtime-on-directml)
+- [Olive and DirectML](#olive-and-directml)
+- [Windows ML on DirectML](#windows-ml-on-directml)
 - [TensorFlow with DirectML](#tensorflow-with-directml)
 - [PyTorch with DirectML](#pytorch-with-directml)
 - [Feedback](#feedback)
@@ -54,8 +57,9 @@ DirectML is built-in as a backend to several frameworks such as Windows ML, ONNX
 
 See the following sections for more information:
 
-* [Windows ML on DirectML](#Windows-ML-on-DirectML)
 * [ONNX Runtime on DirectML](#ONNX-Runtime-on-DirectML)
+* [Olive and DirectML](#Olive-and-DirectML)
+* [Windows ML on DirectML](#Windows-ML-on-DirectML)
 * [TensorFlow with DirectML (Preview)](#TensorFlow-with-DirectML-Preview)
 * [PyTorch with DirectML (Preview)](#pytorch-with-DirectML-Preview)
 
@@ -78,18 +82,6 @@ DirectML Python sample code is available under [Python/samples](./Python/samples
 
 [DxDispatch](./DxDispatch/README.md) is simple command-line executable for launching DirectX 12 compute programs (including DirectML operators) without writing all the C++ boilerplate.
 
-## Windows ML on DirectML
-
-Windows ML (WinML) is a high-performance, reliable API for deploying hardware-accelerated ML inferences on Windows devices. DirectML provides the GPU backend for Windows ML.
-
-DirectML acceleration can be enabled in Windows ML using the [LearningModelDevice](https://docs.microsoft.com/uwp/api/windows.ai.machinelearning.learningmodeldevice) with any one of the [DirectX DeviceKinds](https://docs.microsoft.com/uwp/api/windows.ai.machinelearning.learningmodeldevicekind).
-
-For more information, see [Get Started with Windows ML](https://docs.microsoft.com/windows/ai/windows-ml/#get-started).
-
-* [Windows Machine Learning Overview (docs.microsoft.com)](https://docs.microsoft.com/windows/ai/windows-ml/)
-* [Windows Machine Learning GitHub](https://github.com/Microsoft/Windows-Machine-Learning)
-* [WinMLRunner](https://github.com/Microsoft/Windows-Machine-Learning/tree/master/Tools/WinMLRunner), a tool for executing ONNX models using WinML with DirectML
-
 ## ONNX Runtime on DirectML
 
 ONNX Runtime is a cross-platform inferencing and training accelerator compatible with many popular ML/DNN frameworks, including PyTorch, TensorFlow/Keras, scikit-learn, and more.
@@ -101,6 +93,26 @@ For more information about getting started, see [Using the DirectML execution pr
 * [ONNX Runtime homepage](https://aka.ms/onnxruntime)
 * [ONNX Runtime GitHub](https://github.com/microsoft/onnxruntime)
 * [DirectML Execution Provider readme](https://github.com/microsoft/onnxruntime/blob/master/docs/execution_providers/DirectML-ExecutionProvider.md)
+
+## Olive and DirectML
+Olive (ONNX Live) is the advanced model optimization tool that integrates seamlessly with DirectML for hardware acceleration across the breadth of the Windows ecosystem. 
+
+For more informantion on using Olive see:
+* [Optimize DirectML performance with Olive](https://devblogs.microsoft.com/directx/optimize-directml-performance-with-olive/)
+* [Olive with DirectML Python sample](https://github.com/microsoft/Olive/tree/main/examples/directml/stable_diffusion)
+* [Olive with DirectML C# sample](https://github.com/onnxruntime/StableDiffusion-v1.5-Onnx-Demo)
+
+## Windows ML on DirectML
+
+Windows ML (WinML) is a high-performance, reliable API for deploying hardware-accelerated ML inferences on Windows devices. DirectML provides the GPU backend for Windows ML.
+
+DirectML acceleration can be enabled in Windows ML using the [LearningModelDevice](https://docs.microsoft.com/uwp/api/windows.ai.machinelearning.learningmodeldevice) with any one of the [DirectX DeviceKinds](https://docs.microsoft.com/uwp/api/windows.ai.machinelearning.learningmodeldevicekind).
+
+For more information, see [Get Started with Windows ML](https://docs.microsoft.com/windows/ai/windows-ml/#get-started).
+
+* [Windows Machine Learning Overview (docs.microsoft.com)](https://docs.microsoft.com/windows/ai/windows-ml/)
+* [Windows Machine Learning GitHub](https://github.com/Microsoft/Windows-Machine-Learning)
+* [WinMLRunner](https://github.com/Microsoft/Windows-Machine-Learning/tree/master/Tools/WinMLRunner), a tool for executing ONNX models using WinML with DirectML
 
 ## TensorFlow with DirectML
 
