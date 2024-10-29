@@ -4291,6 +4291,191 @@ namespace dml
 
         return output;
     }
+
+    struct MultiHeadAttentionOutputs
+    {
+        Expression output;
+        Optional<Expression> outputPresentKey;
+        Optional<Expression> outputPresentValue;
+    };
+
+    inline MultiHeadAttentionOutputs MultiHeadAttention(
+        Optional<Expression> query,
+        Optional<Expression> key,
+        Optional<Expression> value,
+        Optional<Expression> stackedQueryKey,
+        Optional<Expression> stackedKeyValue,
+        Optional<Expression> stackedQueryKeyValue,
+        Optional<Expression> bias,
+        Optional<Expression> mask,
+        Optional<Expression> relativePositionBias,
+        Optional<Expression> pastKey,
+        Optional<Expression> pastValue,
+        Optional<Expression> pastSequenceLengths,
+        float scale,
+        float maskFilterValue,
+        uint32_t queryHeadCount,
+        uint32_t keyValueHeadCount,
+        DML_MULTIHEAD_ATTENTION_MASK_TYPE maskType,
+        bool computeOutputPresentKeyValue,
+        Optional<uint32_t> maxSequenceLength = {})
+    {
+        assert(query || stackedQueryKey || stackedQueryKeyValue);
+
+        detail::GraphBuilder* builder = nullptr;
+
+        if (query)
+        {
+            assert(!stackedQueryKey);
+            assert(!stackedQueryKeyValue);
+            builder = query->Impl()->GetGraphBuilder();
+        }
+        else if (stackedQueryKey)
+        {
+            assert(!query);
+            assert(!key);
+            assert(value);
+            assert(!stackedKeyValue);
+            assert(!stackedQueryKeyValue);
+            builder = stackedQueryKey->Impl()->GetGraphBuilder();
+        }
+        else
+        {
+            assert(stackedQueryKeyValue);
+            assert(!query);
+            assert(!key);
+            assert(!value);
+            assert(!stackedQueryKey);
+            assert(!stackedKeyValue);
+            assert(!stackedQueryKeyValue);
+            builder = stackedQueryKeyValue->Impl()->GetGraphBuilder();
+        }
+
+        TensorDesc queryTensor = query ? query->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc keyTensor = key ? key->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc valueTensor = value ? value->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc stackedQueryKeyTensor = stackedQueryKey ? stackedQueryKey->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc stackedKeyValueTensor = stackedKeyValue ? stackedKeyValue->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc stackedQueryKeyValueTensor = stackedQueryKeyValue ? stackedQueryKeyValue->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc biasTensor = bias ? bias->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc maskTensor = mask ? mask->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc relativePositionBiasTensor = relativePositionBias ? relativePositionBias->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc pastKeyTensor = pastKey ? pastKey->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc pastValueTensor = pastValue ? pastValue->Impl()->GetOutputDesc() : TensorDesc();
+        TensorDesc pastSequenceLengthsTensor = pastSequenceLengths ? pastSequenceLengths->Impl()->GetOutputDesc() : TensorDesc();
+
+        uint32_t batchSize;
+        uint32_t sequenceLength;
+        uint32_t headSize;
+        uint32_t valueHeadSize;
+        DML_TENSOR_DATA_TYPE dataType;
+
+        if (query)
+        {
+            assert(queryTensor.sizes.size() >= 3);
+            batchSize = queryTensor.sizes[queryTensor.sizes.size() - 3];
+            sequenceLength = queryTensor.sizes[queryTensor.sizes.size() - 2];
+            headSize = queryTensor.sizes[queryTensor.sizes.size() - 1] / queryHeadCount;
+            dataType = queryTensor.dataType;
+
+            if (value)
+            {
+                assert(valueTensor.sizes.size() >= 3);
+                valueHeadSize = valueTensor.sizes[valueTensor.sizes.size() - 1] / keyValueHeadCount;
+            }
+            else if (stackedKeyValue)
+            {
+                assert(valueTensor.sizes.size() >= 3);
+                valueHeadSize = valueTensor.sizes[valueTensor.sizes.size() - 1];
+            }
+        }
+        else if (stackedQueryKey)
+        {
+            assert(stackedQueryKeyTensor.sizes.size() >= 5);
+            batchSize = stackedQueryKeyTensor.sizes[stackedQueryKeyTensor.sizes.size() - 5];
+            sequenceLength = stackedQueryKeyTensor.sizes[stackedQueryKeyTensor.sizes.size() - 4];
+            headSize = stackedQueryKeyTensor.sizes[stackedQueryKeyTensor.sizes.size() - 1];
+            dataType = stackedQueryKeyTensor.dataType;
+        }
+        else
+        {
+            assert(stackedQueryKeyValue);
+            assert(stackedQueryKeyValueTensor.sizes.size() >= 5);
+            batchSize = stackedQueryKeyValueTensor.sizes[stackedQueryKeyValueTensor.sizes.size() - 5];
+            sequenceLength = stackedQueryKeyValueTensor.sizes[stackedQueryKeyValueTensor.sizes.size() - 4];
+            headSize = stackedQueryKeyValueTensor.sizes[stackedQueryKeyValueTensor.sizes.size() - 1];
+            valueHeadSize = headSize;
+            dataType = stackedQueryKeyValueTensor.dataType;
+        }
+
+        uint32_t outputHiddenSize = valueHeadSize * queryHeadCount;
+
+        TensorDesc::Dimensions outputSizes({batchSize, sequenceLength, outputHiddenSize});
+        TensorDesc outputTensor = TensorDesc(dataType, outputSizes, builder->GetTensorPolicy());
+
+        TensorDesc outputPresentKeyTensor;
+        TensorDesc outputPresentValueTensor;
+        if (computeOutputPresentKeyValue)
+        {
+            assert(maxSequenceLength);
+
+            TensorDesc::Dimensions outputPresentKeySizes({batchSize, keyValueHeadCount, *maxSequenceLength, headSize});
+            outputPresentKeyTensor = TensorDesc(dataType, outputPresentKeySizes, builder->GetTensorPolicy());
+
+            TensorDesc::Dimensions outputPresentValueSizes({batchSize, keyValueHeadCount, *maxSequenceLength, valueHeadSize});
+            outputPresentValueTensor = TensorDesc(dataType, outputPresentValueSizes, builder->GetTensorPolicy());
+        }
+        
+        DML_MULTIHEAD_ATTENTION1_OPERATOR_DESC desc = {};
+        desc.QueryTensor = query ? queryTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.KeyTensor = key ? keyTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.ValueTensor = value ? valueTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.StackedQueryKeyTensor = stackedQueryKey ? stackedQueryKeyTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.StackedKeyValueTensor = stackedKeyValue ? stackedKeyValueTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.StackedQueryKeyValueTensor = stackedQueryKeyValue ? stackedQueryKeyValueTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.BiasTensor = bias ? biasTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.MaskTensor = mask ? maskTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.RelativePositionBiasTensor = relativePositionBias ? relativePositionBiasTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.PastKeyTensor = pastKey ? pastKeyTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.PastValueTensor = pastValue ? pastValueTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.PastSequenceLengthsTensor = pastSequenceLengths ? pastSequenceLengthsTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.OutputTensor = outputTensor.AsPtr<DML_TENSOR_DESC>();
+        desc.OutputPresentKeyTensor = computeOutputPresentKeyValue ? outputPresentKeyTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.OutputPresentValueTensor = computeOutputPresentKeyValue ? outputPresentValueTensor.AsPtr<DML_TENSOR_DESC>() : nullptr;
+        desc.Scale = scale;
+        desc.MaskFilterValue = maskFilterValue;
+        desc.QueryHeadCount = queryHeadCount;
+        desc.KeyValueHeadCount = keyValueHeadCount;
+        desc.MaskType = maskType;
+
+        detail::NodeOutput* const inputs[] = {
+            query ? query->Impl() : nullptr,
+            key ? key->Impl() : nullptr,
+            value ? value->Impl() : nullptr,
+            stackedQueryKey ? stackedQueryKey->Impl() : nullptr,
+            stackedKeyValue ? stackedKeyValue->Impl() : nullptr,
+            stackedQueryKeyValue ? stackedQueryKeyValue->Impl() : nullptr,
+            bias ? bias->Impl() : nullptr,
+            mask ? mask->Impl() : nullptr,
+            relativePositionBias ? relativePositionBias->Impl() : nullptr,
+            pastKey ? pastKey->Impl() : nullptr,
+            pastValue ? pastValue->Impl() : nullptr,
+            pastSequenceLengths ? pastSequenceLengths->Impl() : nullptr,
+        };
+        detail::NodeID node = builder->CreateOperatorNode(static_cast<DML_OPERATOR_TYPE>(DML_OPERATOR_MULTIHEAD_ATTENTION1), &desc, inputs);
+
+        MultiHeadAttentionOutputs outputs {};
+
+        outputs.output = builder->CreateNodeOutput(node, 0, std::move(outputTensor));
+
+        if (computeOutputPresentKeyValue)
+        {
+            outputs.outputPresentKey = builder->CreateNodeOutput(node, 1, std::move(outputPresentKeyTensor));
+            outputs.outputPresentValue = builder->CreateNodeOutput(node, 2, std::move(outputPresentValueTensor));
+        }
+
+        return outputs;
+    }
 #endif
 
     // Reinterprets the memory of a tensor with a different type and dimensions (analogously to using
