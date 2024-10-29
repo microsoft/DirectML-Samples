@@ -154,7 +154,7 @@ void InitializeDirectML(ID3D12Device1** d3dDeviceOut, ID3D12CommandQueue** comma
     dmlDevice.CopyTo(dmlDeviceOut);
 }
 
-void main()
+int main()
 {
     ComPtr<ID3D12Device1> d3dDevice;
     ComPtr<IDMLDevice> dmlDevice;
@@ -244,4 +244,5 @@ void main()
     // Read results
     ComPtr<ID3D12Resource> outputResource;
     Ort::ThrowOnError(ortDmlApi->GetD3D12ResourceFromAllocation(allocator, outputTensor.GetTensorMutableData<void*>(), &outputResource));
+    return 0;
 }
