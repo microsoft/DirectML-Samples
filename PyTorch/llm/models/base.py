@@ -24,6 +24,9 @@ class Transformer(nn.Module):
         self.max_batch_size = -1
         self.max_seq_length = -1
 
+    def set_max_position_embeddings(self, max_pos_emb):
+        self.max_position_embeddings = max_pos_emb
+
     def setup_caches(self, max_batch_size, max_seq_length):
         head_dim = self.config.dim // self.config.n_head
         max_seq_length = find_multiple(max_seq_length, 8)
@@ -49,5 +52,9 @@ class Transformer(nn.Module):
         return logits
 
     @classmethod
-    def from_name(cls, name: str):
-        return cls(ModelArgs.from_name(name))
+    def from_name(cls, name: str, max_pos_emb: int = 8192):
+        model = cls(ModelArgs.from_name(name))
+        if "phi-3.5" in name.lower():
+            model.set_max_position_embeddings(max_pos_emb)
+
+        return model

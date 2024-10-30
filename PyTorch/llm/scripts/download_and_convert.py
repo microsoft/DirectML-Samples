@@ -79,7 +79,10 @@ def convert_hf_checkpoint(
         weight_maps = json.load(file)
 
     model_name = checkpoint_dir.name
-    model_name = "llama" if "phi" not in model_name.lower() else model_name
+    if "phi-3" in model_name.lower():
+        model_name = "Phi-3-mini-4k-instruct"
+    elif "phi" not in model_name:
+        model_name = "llama"
     weight_map = weight_maps[model_name]
 
     # Load the json file containing weight mapping

@@ -74,13 +74,13 @@ def decode_with_overlap(tokenizer: PreTrainedTokenizerFast, tokens: List[Tensor]
         text_output = current_decoded
     return text_output
 
-def _load_model(checkpoint_path: str, device: torch.device, precision: torch.dtype) -> torch.nn.Module:
+def _load_model(checkpoint_path: str, device: torch.device, precision: torch.dtype, max_pos_emb=8192) -> torch.nn.Module:
     model_name = checkpoint_path.parent.name
     with torch.device('meta'):
         if 'phi-2' in model_name.lower():
             model = Phi2Transformer.from_name(model_name)
         elif 'phi-3' in model_name.lower():
-            model = Phi3Transformer.from_name(model_name)
+            model = Phi3Transformer.from_name(model_name, max_pos_emb=max_pos_emb)
         else:
             model = LlamaTransformer.from_name(model_name)
 

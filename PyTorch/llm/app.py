@@ -125,7 +125,8 @@ class LLM_Model:
         precision: str = 'float32',
         stream_every_n: int = 7,
         max_context_length: int = 3500,
-        use_history: bool = False
+        use_history: bool = False,
+        max_pos_emb: int = 8192
     ):
         self.prompt = prompt
         self.interactive = interactive
@@ -139,6 +140,7 @@ class LLM_Model:
         self.stream_every_n = stream_every_n
         self.max_context_length = max_context_length
         self.use_history = use_history
+        self.max_pos_emb = max_pos_emb
 
         self.tokenizer = None
         self.model = None
@@ -177,8 +179,7 @@ class LLM_Model:
                 messages.append(assistant)
         messages.append({"role": "user", "content": prompt})
         tokens = self.tokenizer.apply_chat_template(
-            messages, return_tensors="pt", add_generation_prompt=self.is_llama_3)[0].to(dtype=torch.int, device=device)
-
+            messages, return_tensors="pt", add_generation_prompt=True)[0].to(dtype=torch.int, device=device)
         if self.use_history:
             while tokens.size(0) > max_context_length:
                 print("Clipping history of conversation as it exceeds the max context length.")
@@ -188,7 +189,7 @@ class LLM_Model:
                 else:
                     break
                 tokens = self.tokenizer.apply_chat_template(
-                    messages, return_tensors="pt", add_generation_prompt=self.is_llama_3)[0].to(dtype=torch.int, device=device)
+                    messages, return_tensors="pt", add_generation_prompt=True)[0].to(dtype=torch.int, device=device)
 
         return tokens
 
@@ -274,7 +275,7 @@ class LLM_Model:
         if self.is_phi_2:
             self.precision = torch.float32
 
-        self.model = _load_model(self.checkpoint_path, device, self.precision)
+        self.model = _load_model(self.checkpoint_path, device, self.precision, max_pos_emb=self.max_pos_emb)
         self.tokenizer = AutoTokenizer.from_pretrained(self.checkpoint_path.parent)
         if self.max_context_length > self.model.config.block_size - (self.max_new_tokens+1):
             raise ValueError(
@@ -288,6 +289,7 @@ class LLM_Model:
         **sampling_kwargs
     ) -> Iterator[str]:
         torch.manual_seed(1235)
+
         encoded = self.encode_tokens(
             prompt,
             history,
@@ -348,7 +350,15 @@ if __name__ == "__main__":
         choices=['float16', 'float32'],
         help='Precision to run the generation with.'
     )
+    parser.add_argument(
+        '--max_pos_emb',
+        type=int,
+        default=8192,
+        help='Maximum Position to scale Phi-3.5 position encodings.'
+    )
     args = parser.parse_args()
+    if args.max_pos_emb > 131072:
+        args.max_pos_emb = 131072
 
     llm_model = LLM_Model(prompt = "Hello",
                       interactive = False,
@@ -360,7 +370,8 @@ if __name__ == "__main__":
                       checkpoint_path = args.checkpoint_path,
                       precision = args.precision,
                       max_context_length = args.max_context_length,
-                      use_history = not args.disable_history)
+                      use_history = not args.disable_history,
+                      max_pos_emb=args.max_pos_emb)
     llm_model.load_model()
 
     demo = gr.ChatInterface(chat).queue()

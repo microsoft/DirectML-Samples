@@ -40,6 +40,7 @@ class Attention(nn.Module):
     def __init__(self, config: ModelArgs):
         super().__init__()
         assert config.dim % config.n_head == 0
+        self.config = config
 
         self.wqkv = nn.Linear(config.dim, 3 * config.dim)
         self.wo = nn.Linear(config.dim, config.dim)
@@ -73,7 +74,8 @@ class Attention(nn.Module):
             int(self.head_dim * self.partial_rotary_factor),
             max_position_embeddings=max_position_embeddings,
             base=rope_base,
-            dtype=dtype
+            dtype=dtype,
+            config=self.config,
         )
 
     def forward(self, x: Tensor, mask: Tensor, input_pos: Optional[Tensor] = None) -> Tensor:
@@ -84,7 +86,7 @@ class Attention(nn.Module):
         q = q.reshape(bsz, seqlen, self.n_head, self.head_dim).transpose(1,2)
         k = k.reshape(bsz, seqlen, self.n_local_heads, self.head_dim).transpose(1,2)
 
-        cos, sin = self.rotary_emb()
+        cos, sin = self.rotary_emb(self.min_position + seqlen)
 
         q, k = torch_directml.apply_rotary_position_emb(
             q, k, cos, sin, self.min_position, seqlen, self.rotary_emb.dim)
