@@ -1,4 +1,4 @@
-﻿absl-py==0.9.0
+absl-py==0.9.0
 astor==0.8.1
 certifi==2019.11.28
 chardet==3.0.4
@@ -26,7 +26,7 @@ tensorflow==1.15.2
 tensorflow-estimator==1.15.1
 termcolor==1.1.0
 tqdm==4.43.0
-urllib3==1.25.8
+urllib3==1.26.17
 Werkzeug==1.0.0
 wincertstore==0.2
 wrapt==1.12.0
