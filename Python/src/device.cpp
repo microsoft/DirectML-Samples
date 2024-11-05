@@ -87,9 +87,7 @@ Device::Device(bool useGpu, bool useDebugLayer, DXGI_GPU_PREFERENCE gpuPreferenc
     allocatorDesc.Device = m_d3d12Device;
     allocatorDesc.IsUMA = arch.UMA;
     allocatorDesc.ResourceHeapTier = options.ResourceHeapTier;
-    ThrowIfFailed(gpgmm::d3d12::ResourceAllocator::CreateAllocator(allocatorDesc, &m_resourceAllocator));
-
-    m_residencyManager = m_resourceAllocator->GetResidencyManager();
+    ThrowIfFailed(gpgmm::d3d12::ResourceAllocator::CreateAllocator(allocatorDesc, &m_resourceAllocator, &m_residencyManager));
 
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
@@ -114,8 +112,17 @@ Device::Device(bool useGpu, bool useDebugLayer, DXGI_GPU_PREFERENCE gpuPreferenc
     ThrowIfFailed(m_d3d12Device->CreateDescriptorHeap(&descriptorHeapDesc, IID_GRAPHICS_PPV_ARGS(m_clearUavDescriptorHeapCpu.GetAddressOf())));
 
     descriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    ThrowIfFailed(m_d3d12Device->CreateDescriptorHeap(&descriptorHeapDesc, IID_GRAPHICS_PPV_ARGS(m_clearUavDescriptorHeapGpu.GetAddressOf())));
 
+    ComPtr<ID3D12DescriptorHeap> d3d12DescriptorHeap;
+    ThrowIfFailed(m_d3d12Device->CreateDescriptorHeap(&descriptorHeapDesc, IID_GRAPHICS_PPV_ARGS(d3d12DescriptorHeap.GetAddressOf())));
+
+    const uint64_t heapSize = descriptorHeapDesc.NumDescriptors * m_d3d12Device->GetDescriptorHandleIncrementSize(descriptorHeapDesc.Type);
+    m_clearUavDescriptorHeapGpu = std::make_unique<SVDescriptorHeap>(std::move(d3d12DescriptorHeap), heapSize);
+
+    if (m_residencyManager != nullptr){
+        ThrowIfFailed(m_residencyManager->InsertHeap(m_clearUavDescriptorHeapGpu.get()));
+        ThrowIfFailed(m_residencyManager->LockHeap(m_clearUavDescriptorHeapGpu.get()));
+    }
 
     // 
     // Create DML resources
@@ -653,19 +660,20 @@ void Device::EnsureDescriptorHeapSize(uint32_t requestedSizeInDescriptors)
 
         m_descriptorHeap = nullptr;
 
-        if (m_residencyManager != nullptr){
-            ThrowIfFailed(m_residencyManager->Evict(newSize, DXGI_MEMORY_SEGMENT_GROUP_LOCAL));
-        }
-
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         desc.NumDescriptors = newSize;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
+        const uint64_t heapSize = newSize * m_d3d12Device->GetDescriptorHandleIncrementSize(desc.Type);
+        if (m_residencyManager != nullptr){
+            ThrowIfFailed(m_residencyManager->Evict(heapSize, DXGI_MEMORY_SEGMENT_GROUP_LOCAL));
+        }
+
         ComPtr<ID3D12DescriptorHeap> d3d12DescriptorHeap;
         ThrowIfFailed(m_d3d12Device->CreateDescriptorHeap(&desc, IID_GRAPHICS_PPV_ARGS(d3d12DescriptorHeap.GetAddressOf())));
     
-        m_descriptorHeap = std::make_unique<SVDescriptorHeap>(std::move(d3d12DescriptorHeap), newSize);
+        m_descriptorHeap = std::make_unique<SVDescriptorHeap>(std::move(d3d12DescriptorHeap), heapSize);
 
         if (m_residencyManager != nullptr){
             ThrowIfFailed(m_residencyManager->InsertHeap(m_descriptorHeap.get()));
@@ -708,7 +716,7 @@ void Device::ClearGpuBuffers(dml::Span<ID3D12Resource*> buffers)
         FillGpuBuffer(
             m_commandList.Get(),
             m_clearUavDescriptorHeapCpu.Get(),
-            m_clearUavDescriptorHeapGpu.Get(),
+            m_clearUavDescriptorHeapGpu->m_Heap.Get(),
             descriptorOffset,
             buffer,
             ClearValue);

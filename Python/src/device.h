@@ -70,11 +70,7 @@ namespace pydml
         
         // Residency management is used to handle oversubscribing of video memory. 
         // The lifetime of |m_residencyManager| will be fully owned by |m_resourceAllocator|.
-        gpgmm::d3d12::ResidencyManager* m_residencyManager = nullptr;
-
-        // GPU- and CPU-visible descriptor heaps used for ClearUnorderedAccessView
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_clearUavDescriptorHeapGpu;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_clearUavDescriptorHeapCpu;
+        Microsoft::WRL::ComPtr<gpgmm::d3d12::ResidencyManager> m_residencyManager;
 
         Microsoft::WRL::ComPtr<IDMLDevice> m_dmlDevice;
         Microsoft::WRL::ComPtr<IDMLCommandRecorder> m_commandRecorder;
@@ -91,6 +87,10 @@ namespace pydml
 
             Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_Heap;
         };
+
+        // GPU- and CPU-visible descriptor heaps used for ClearUnorderedAccessView
+        std::unique_ptr<SVDescriptorHeap> m_clearUavDescriptorHeapGpu;
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_clearUavDescriptorHeapCpu;
 
         // Lazily-initialized resources for operator initialization/execution
         std::unique_ptr<SVDescriptorHeap> m_descriptorHeap;
