@@ -1,11 +1,11 @@
-﻿absl-py==0.9.0
+absl-py==0.9.0
 astor==0.8.1
 certifi==2019.11.28
 chardet==3.0.4
 cycler==0.10.0
 gast==0.2.2
 google-pasta==0.1.8
-grpcio==1.27.2
+grpcio==1.53.0
 h5py==2.10.0
 idna==2.9
 Keras-Applications==1.0.8
