@@ -133,13 +133,13 @@ Test Error:
 Once the model is trained and saved we can now run the prediction using the following steps. The predict script will use that latest trained model from the checkpoints folder.
 
 ```
-python pytorch\cv\squeezenet\predict.py --image E:\a.jpeg
+python pytorch\cv\resnet50\predict.py --image E:\a.jpeg
 ```
 
 You should see the result such as this:
 
 ```
-E:\work\dml>python pytorch\cv\squeezenet\predict.py --image E:\a.jpeg
+E:\work\dml>python pytorch\cv\resnet50\predict.py --image E:\a.jpeg
 hammerhead 0.35642221570014954
 stingray 0.34619468450546265
 electric ray 0.09593362361192703
