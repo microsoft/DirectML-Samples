@@ -22,7 +22,7 @@ python-dateutil==2.8.1
 requests==2.23.0
 six==1.14.0
 tensorboard==1.15.0
-tensorflow==1.15.2
+tensorflow==2.11.1
 tensorflow-estimator==1.15.1
 termcolor==1.1.0
 tqdm==4.43.0
