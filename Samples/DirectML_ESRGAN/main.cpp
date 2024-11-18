@@ -136,22 +136,43 @@ int main(int argc, char** argv)
 
         auto commandLineArgs = commandLineParams.parse(argc, argv);
 
-        // See helpers.h for logic to select a DXCore adapter, create DML device, and create D3D command queue.
-        auto [dmlDevice, commandQueue] = CreateDmlDeviceAndCommandQueue(commandLineArgs["adapter"].as<std::string>());
+        // First try to run on NPU, then GPU.
+        std::vector<std::tuple<std::string, bool>> adapters = {{"NPU", false}, {"GPU", true}};
+        for (uint32_t i = 0; i < adapters.size(); i++)
+        {
+            auto [adapterType, isGraphicsAdapter] = adapters[i];
+            std::cout << "Trying on " << adapterType << std::endl;
+            try
+            {
+                // See helpers.h for logic to select a DXCore adapter, create DML device, and create D3D command queue.
+                auto [dmlDevice, commandQueue] = CreateDmlDeviceAndCommandQueue(
+                    adapterType,
+                    isGraphicsAdapter,
+                    commandLineArgs["adapter"].as<std::string>()
+                );
 
-        RunModel(
-            dmlDevice.Get(), 
-            commandQueue.Get(), 
-            commandLineArgs["model"].as<std::string>(),
-            commandLineArgs["image"].as<std::string>()
-        );
+                RunModel(
+                    dmlDevice.Get(),
+                    commandQueue.Get(),
+                    commandLineArgs["model"].as<std::string>(),
+                    commandLineArgs["image"].as<std::string>()
+                );
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << adapterType << " Error: " << e.what() << std::endl;
+                continue;
+            }
+
+            return 0;
+        }
 
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
     }
 
-    return 0;
+    return 1;
 }
+

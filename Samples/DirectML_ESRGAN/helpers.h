@@ -10,6 +10,8 @@ enum class ChannelOrder
 };
 
 std::tuple<Microsoft::WRL::ComPtr<IDMLDevice>, Microsoft::WRL::ComPtr<ID3D12CommandQueue>> CreateDmlDeviceAndCommandQueue(
+    std::string adapterType,
+    bool useGraphicsAdapter,
     std::string_view adapterNameFilter = ""
 );
 

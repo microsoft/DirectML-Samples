@@ -37,30 +37,50 @@ Run CMake to configure and build the sample:
 
 ## Run
 
-Running the compiled executable will list all enumerate DX adapters, select a DX adapter (by default the first), then use this adapter to run inference with the model:
+Running the compiled executable will list all enumerate DX adapters. DX adapter without graphics attribute (NPU) will be selected first. If there is no compatible<sup>1</sup> NPU adapter or there is a failure, DX adapter with graphics attribute (GPU) will be selected to retry. Selected adapter will be used to run inference with the model.
 
 ```
 > cd build/win-<arch>/<config>
 > .\directml_esrgan.exe
-
-Adapter[0]: NVIDIA GeForce RTX 4080 (SELECTED)
-Adapter[1]: Intel(R) UHD Graphics 770
-Adapter[2]: Microsoft Basic Render Driver
-Saving cropped/scaled image to input.png
-Saving inference results to output.png
-```
-
-### NPU Support
-
-You may use the `-a <adapter_substring>` to select a different adapter that contains part of the `<adapter_substring>` in its description. For example, you can run on a compatible<sup>1</sup> NPU using `-a NPU`:
-
-```
-> cd build/win-arm64/release
-> .\directml_esrgan.exe -a NPU
-Adapter[0]: Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Adreno(TM) GPU
-Adapter[1]: Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Hexagon(TM) NPU (SELECTED)
+Trying on NPU
+Adapter[0]:
+ not NPU
+ Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Adreno(TM) GPU
+Adapter[1]: (SELECTED)
+ NPU
+ Snapdragon(R) X Elite - X1E78100 - Qualcomm(R) Hexagon(TM) NPU
 ...
 ```
+
+```
+> cd build/win-<arch>/<config>
+> .\directml_esrgan.exe
+Trying on NPU
+Adapter[0]:
+ not NPU
+ NVIDIA GeForce RTX 4080
+Adapter[1]:
+ not NPU
+ Intel(R) UHD Graphics 770
+Adapter[2]:
+ not NPU
+ Microsoft Basic Render Driver
+NPU Error: No compatible adapters found.
+
+Trying on GPU
+Adapter[0]: (SELECTED)
+ GPU
+ NVIDIA GeForce RTX 4080
+Adapter[1]:
+ GPU
+ Intel(R) UHD Graphics 770
+Adapter[2]:
+ GPU
+ Microsoft Basic Render Driver
+...
+```
+
+You may use the `-a <adapter_substring>` to select a specific adapter that contains part of the `<adapter_substring>` in its description.
 
 You must have Windows 11 24H2 installed to run this sample using an NPU.
 

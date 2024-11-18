@@ -5,6 +5,8 @@
 #include "helpers.h"
 
 std::tuple<Microsoft::WRL::ComPtr<IDXCoreAdapter>, D3D_FEATURE_LEVEL> SelectAdapter(
+    std::string adapterType,
+    bool useGraphicsAdapter,
     std::string_view adapterNameFilter)
 {
     using Microsoft::WRL::ComPtr;
@@ -52,6 +54,7 @@ std::tuple<Microsoft::WRL::ComPtr<IDXCoreAdapter>, D3D_FEATURE_LEVEL> SelectAdap
     std::vector<ComPtr<IDXCoreAdapter>> adapters;
     std::vector<std::string> adapterDescriptions;
     std::optional<uint32_t> firstAdapterMatchingNameFilter;
+    bool foundPotentialAdapter = false;
 
     for (uint32_t i = 0; i < adapterList->GetAdapterCount(); i++)
     {
@@ -80,16 +83,33 @@ std::tuple<Microsoft::WRL::ComPtr<IDXCoreAdapter>, D3D_FEATURE_LEVEL> SelectAdap
         adapters.push_back(adapter);
         adapterDescriptions.push_back(adapterDescription);
 
-        if (!firstAdapterMatchingNameFilter &&
-            adapterDescription.find(adapterNameFilter) != std::string::npos)
+        if (adapter->IsAttributeSupported(DXCORE_ADAPTER_ATTRIBUTE_D3D12_GRAPHICS) == useGraphicsAdapter)
         {
-            firstAdapterMatchingNameFilter = i;
-            std::cout << "Adapter[" << i << "]: " << adapterDescription << " (SELECTED)\n";
-        }
+            foundPotentialAdapter = true;
+            if (!firstAdapterMatchingNameFilter &&
+                adapterDescription.find(adapterNameFilter) != std::string::npos)
+            {
+                firstAdapterMatchingNameFilter = i;
+                std::cout << "Adapter[" << i << "] (SELECTED):\n";
+            }
+            else
+            {
+                std::cout << "Adapter[" << i << "]:\n";
+
+            }
+            std::cout << " " << adapterType << "\n";
+	}
         else
         {
-            std::cout << "Adapter[" << i << "]: " << adapterDescription << "\n";
+            std::cout << "Adapter[" << i << "]:\n";
+            std::cout << " not " << adapterType << "\n";
         }
+	std::cout << " " << adapterDescription << "\n";
+    }
+
+    if (!foundPotentialAdapter)
+    {
+        throw std::runtime_error("No compatible adapters found.");
     }
 
     if (!firstAdapterMatchingNameFilter)
@@ -100,11 +120,14 @@ std::tuple<Microsoft::WRL::ComPtr<IDXCoreAdapter>, D3D_FEATURE_LEVEL> SelectAdap
     return { adapters[*firstAdapterMatchingNameFilter], featureLevel };
 }
 
-std::tuple<Microsoft::WRL::ComPtr<IDMLDevice>, Microsoft::WRL::ComPtr<ID3D12CommandQueue>> CreateDmlDeviceAndCommandQueue(std::string_view adapterNameFilter)
+std::tuple<Microsoft::WRL::ComPtr<IDMLDevice>, Microsoft::WRL::ComPtr<ID3D12CommandQueue>> CreateDmlDeviceAndCommandQueue(
+    std::string adapterType,
+    bool useGraphicsAdapter,
+    std::string_view adapterNameFilter)
 {
     using Microsoft::WRL::ComPtr;
     
-    auto [adapter, featureLevel] = SelectAdapter(adapterNameFilter);
+    auto [adapter, featureLevel] = SelectAdapter(adapterType, useGraphicsAdapter, adapterNameFilter);
 
     ComPtr<ID3D12Device> d3d12Device;
     THROW_IF_FAILED(D3D12CreateDevice(adapter.Get(), featureLevel, IID_PPV_ARGS(&d3d12Device)));
